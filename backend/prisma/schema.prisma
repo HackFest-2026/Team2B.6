@@ -1,0 +1,148 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String           @id @default(uuid())
+  name         String
+  email        String           @unique
+  password     String
+  role         String           @default("user") // "user" | "admin"
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  documents    Document[]
+  workspaces   Workspace[]
+  reports      CombinedReport[]
+  auditEvents  AuditEvent[]
+  chatMessages ChatMessage[]
+}
+
+model Workspace {
+  id          String           @id @default(uuid())
+  name        String
+  description String?
+  userId      String
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isDemo      Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  documents   Document[]
+  claims      Claim[]
+  conflicts   Conflict[]
+  reports     CombinedReport[]
+}
+
+model Document {
+  id               String          @id @default(uuid())
+  workspaceId      String?
+  workspace        Workspace?      @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  title            String
+  originalName     String
+  mimeType         String
+  size             Int
+  fileHash         String?
+  storagePath      String
+  classification   String          @default("Internal") // "Internal" | "Restricted" | "Public"
+  status           String          @default("Pending") // Pending, Scanning, Extracting, Completed, Failed, Quarantined
+  extractionStatus String          @default("Pending") // Extracted, Partial, Unsupported, Failed, OCR_Fallback
+  extractedText    String?
+  pageCount        Int             @default(1)
+  wordCount        Int             @default(0)
+  limitationNotes  String?
+  userId           String
+  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  citations        ClaimCitation[]
+}
+
+model Claim {
+  id                 String          @id @default(uuid())
+  workspaceId        String?
+  workspace          Workspace?      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  claimText          String
+  entity             String?
+  attribute          String?
+  value              String?
+  status             String          @default("Unverified") // "Verified" | "Conflicting" | "Unverified" | "Needs Review"
+  confidence         Float           @default(1.0)
+  verificationReason String?
+  isDuplicate        Boolean         @default(false)
+  duplicateOfId      String?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  citations          ClaimCitation[]
+  conflictsA         Conflict[]      @relation("Claim1")
+  conflictsB         Conflict[]      @relation("Claim2")
+}
+
+model ClaimCitation {
+  id             String   @id @default(uuid())
+  claimId        String
+  claim          Claim    @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  documentId     String
+  document       Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  excerpt        String
+  location       String
+  charStart      Int?
+  charEnd        Int?
+  verifiedInText Boolean  @default(false)
+  createdAt      DateTime @default(now())
+}
+
+model Conflict {
+  id          String     @id @default(uuid())
+  workspaceId String?
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  entity      String
+  attribute   String
+  description String
+  claimId1    String
+  claim1      Claim      @relation("Claim1", fields: [claimId1], references: [id], onDelete: Cascade)
+  claimId2    String
+  claim2      Claim      @relation("Claim2", fields: [claimId2], references: [id], onDelete: Cascade)
+  status      String     @default("Open") // "Open" | "Resolved" | "Dismissed"
+  createdAt   DateTime   @default(now())
+}
+
+model CombinedReport {
+  id                      String     @id @default(uuid())
+  workspaceId             String?
+  workspace               Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  title                   String
+  executiveSummary        String?
+  markdownContent         String
+  verificationSummaryJson String?
+  userId                  String
+  user                    User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt               DateTime   @default(now())
+  updatedAt               DateTime   @updatedAt
+}
+
+model ChatMessage {
+  id            String   @id @default(uuid())
+  workspaceId   String?
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role          String
+  content       String
+  citationsJson String?
+  createdAt     DateTime @default(now())
+}
+
+model AuditEvent {
+  id         String   @id @default(uuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action     String
+  entityType String
+  entityId   String?
+  details    String?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+}

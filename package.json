@@ -1,0 +1,17 @@
+{
+  "name": "verimerge-workspace",
+  "version": "2.4.0",
+  "description": "Verimerge — Multi-Source Ingestion into a Single Verifiable Document",
+  "scripts": {
+    "install:all": "cd backend && npm install && cd ../frontend && npm install",
+    "db:init": "cd backend && npx prisma db push && npx prisma generate",
+    "test": "cd backend && npm test",
+    "build": "cd frontend && npm run build",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}
